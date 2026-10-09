@@ -10,7 +10,8 @@ jobs:
           set -e
           xcodebuild -scheme BetterCastReceiverIOS -destination 'generic/platform=iOS' \
             -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY= CODE_SIGN_ENTITLEMENTS= \
-            -derivedDataPath build 2>&1 | tail -3
+            -derivedDataPath build > build.log 2>&1 || { grep -B3 -A8 -iE "error|failed" build.log | head -100; exit 1; }
+          tail -3 build.log
           BIN=$(find build/Build/Products/Release-iphoneos -name "BetterCastReceiverIOS" -type f | head -1)
           test -n "$BIN"
           echo "BIN=$BIN" >> "$GITHUB_ENV"
