@@ -1,0 +1,36 @@
+name: build-ios-ipa
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build iOS receiver
+        run: |
+          set -e
+          xcodebuild -scheme BetterCastReceiverIOS -destination 'generic/platform=iOS' \
+            -configuration Release CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY= CODE_SIGN_ENTITLEMENTS= \
+            -derivedDataPath build 2>&1 | tail -3
+          BIN=$(find build/Build/Products/Release-iphoneos -name "BetterCastReceiverIOS" -type f | head -1)
+          test -n "$BIN"
+          echo "BIN=$BIN" >> "$GITHUB_ENV"
+          file "$BIN"
+      - name: Package IPA
+        run: |
+          brew install ldid
+          APP=ios_packaging/Payload/BetterCastReceiverIOS.app
+          mkdir -p "$APP/Frameworks"
+          cp "$BIN" "$APP/"
+          cp Sources/BetterCastReceiverIOS/Info.plist "$APP/"
+          cp assets/branding/AppIcon.png "$APP/AppIcon.png" 2>/dev/null || echo "no icon"
+          SWIFT_LIB_PATH=$(xcrun --toolchain default --show-sdk-path 2>/dev/null)/../usr/lib/swift || true
+          for lib in libswiftCore.dylib libswiftFoundation.dylib libswiftUIKit.dylib; do
+            find /Applications/Xcode*.app -path "*swift-5.0/iphoneos/$lib" -exec cp {} "$APP/Frameworks/" \; 2>/dev/null || true
+          done
+          ldid -S "$APP/BetterCastReceiverIOS"
+          cd ios_packaging && zip -r -q ../BetterCastReceiverIOS.ipa Payload && cd ..
+          ls -la BetterCastReceiverIOS.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetterCastReceiverIOS-ipa
+          path: BetterCastReceiverIOS.ipa
