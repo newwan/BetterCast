@@ -13,7 +13,7 @@ jobs:
             -derivedDataPath build > build.log 2>&1 || { grep -B3 -A8 -iE "error|failed" build.log | head -100; exit 1; }
           tail -3 build.log
           BIN=""
-          for f in $(find build/Build/Products/Release-iphoneos -name "BetterCastReceiverIOS" -type f); do
+          for f in $(find build/Build/Products/Release-iphoneos -name "BetterCastReceiverIOS" -type f -not -path "*dSYM*" -not -path "*Intermediates*"); do
             if file "$f" | grep -q "Mach-O"; then BIN="$f"; break; fi
           done
           test -n "$BIN"
